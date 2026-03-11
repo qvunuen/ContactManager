@@ -9,6 +9,12 @@ include_directories(include)
 
 file(GLOB SOURCES "src/*.cpp")
 
+# Create a data folder
+add_custom_command(TARGET ContactManager PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/data"
+    COMMENT "Checking and Creating data folder..."
+)
+
 add_executable(ContactManager ${SOURCES})
 
 set_target_properties(ContactManager PROPERTIES 
