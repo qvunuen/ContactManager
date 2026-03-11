@@ -1,0 +1,9 @@
+# Trash from local CMake
+build/
+bin/
+
+# Private data
+data/*.txt
+
+# System File
+.DS_Store
