@@ -2,8 +2,10 @@
 build/
 bin/
 
-# Private data
-data/*.txt
+# Private SQLite data
+data/*.db
+data/*.db-*
+data/*.sqlite
 
 # System File
 .DS_Store

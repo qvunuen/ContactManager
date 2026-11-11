@@ -1,8 +1,8 @@
 #ifndef CONTACT_H
 #define CONTACT_H
 
+#include <iosfwd>
 #include <string>
-#include <iostream>
 
 class Contact {
 private:
@@ -11,21 +11,20 @@ private:
     std::string email;
 
 public:
-    // Constructor (Hàm khởi tạo)
-    Contact(std::string n = "", std::string p = "", std::string e = "");
+    explicit Contact(std::string name = "", std::string phone = "", std::string email = "");
 
-    // Getters (Lấy dữ liệu)
-    std::string getName() const;
-    std::string getPhone() const;
-    std::string getEmail() const;
+    const std::string& getName() const;
+    const std::string& getPhone() const;
+    const std::string& getEmail() const;
 
-    // Setters (Cập nhật dữ liệu - Dùng cho chức năng Edit)
-    void setName(std::string n);
-    void setPhone(std::string p);
-    void setEmail(std::string e);
+    void setName(const std::string& name);
+    void setPhone(const std::string& phone);
+    void setEmail(const std::string& email);
 
-    // Phương thức bổ trợ
-    void displayContact() const; 
+    bool operator==(const Contact& other) const;
+    bool operator!=(const Contact& other) const;
 };
+
+std::ostream& operator<<(std::ostream& os, const Contact& contact);
 
 #endif

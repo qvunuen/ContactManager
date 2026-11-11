@@ -1,23 +1,47 @@
 #include "Contact.h"
-#include <iomanip>
+#include "Validator.h"
+#include <ostream>
 
-// Constructor: Khởi tạo giá trị ban đầu
-Contact::Contact(std::string n, std::string p, std::string e) 
-    : name(n), phone(p), email(e) {}
+Contact::Contact(std::string name, std::string phone, std::string email)
+    : name(Validator::trim(name)),
+      phone(Validator::trim(phone)),
+      email(Validator::trim(email)) {}
 
-// Getters
-std::string Contact::getName() const { return name; }
-std::string Contact::getPhone() const { return phone; }
-std::string Contact::getEmail() const { return email; }
+const std::string& Contact::getName() const {
+    return name;
+}
 
-// Setters
-void Contact::setName(std::string n) { name = n; }
-void Contact::setPhone(std::string p) { phone = p; }
-void Contact::setEmail(std::string e) { email = e; }
+const std::string& Contact::getPhone() const {
+    return phone;
+}
 
-// Hiển thị một dòng thông tin
-void Contact::displayContact() const {
-    std::cout << std::left << std::setw(20) << name 
-              << std::setw(15) << phone 
-              << std::setw(25) << email << std::endl;
+const std::string& Contact::getEmail() const {
+    return email;
+}
+
+void Contact::setName(const std::string& newName) {
+    name = Validator::trim(newName);
+}
+
+void Contact::setPhone(const std::string& newPhone) {
+    phone = Validator::trim(newPhone);
+}
+
+void Contact::setEmail(const std::string& newEmail) {
+    email = Validator::trim(newEmail);
+}
+
+bool Contact::operator==(const Contact& other) const {
+    return name == other.name && phone == other.phone && email == other.email;
+}
+
+bool Contact::operator!=(const Contact& other) const {
+    return !(*this == other);
+}
+
+std::ostream& operator<<(std::ostream& os, const Contact& contact) {
+    os << "Contact{name=\"" << contact.getName()
+       << "\", phone=\"" << contact.getPhone()
+       << "\", email=\"" << contact.getEmail() << "\"}";
+    return os;
 }

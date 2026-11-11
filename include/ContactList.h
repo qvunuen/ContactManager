@@ -2,29 +2,52 @@
 #define CONTACTLIST_H
 
 #include "Contact.h"
-#include <vector>
+#include <cstddef>
+#include <optional>
 #include <string>
+#include <vector>
 
 class ContactList {
 private:
     std::vector<Contact> contacts;
     std::string fileName;
 
+    bool containsDuplicate(
+        const Contact& contact,
+        std::optional<std::size_t> excludeIndex = std::nullopt
+    ) const;
+
 public:
-    ContactList(std::string file = "contacts.txt");
+    explicit ContactList(std::string file = "contacts.db");
 
-    // Các chức năng chính (CRUD)
-    void addContact(const Contact& c);
-    void showAllContacts() const;
-    int searchContact(std::string keyword) const; // Trả về chỉ số (index) trong vector
-    bool deleteContact(int index);
-    bool updateContact(int index, const Contact& newContact);
-    std::vector<int> searchContactsAdvanced(std::string keyword) const;
-    void showContactAtIndex(int index) const;
+    // Accessors
+    std::size_t size() const;
+    bool empty() const;
+    const Contact& getContact(std::size_t index) const;
+    const std::vector<Contact>& getContacts() const;
+    const std::string& getFileName() const;
+    bool hasContact(
+        const Contact& contact,
+        std::optional<std::size_t> excludeIndex = std::nullopt
+    ) const;
 
-    // Thao tác với File (Rất quan trọng cho đồ án)
-    void saveToFile();
-    void loadFromFile();
+    // Core features (CRUD & Search)
+    /** Adds contact if no identical contact exists; returns false on duplicate. */
+    bool addContact(const Contact& contact);
+    /** Updates contact at index unless index is invalid or newContact matches another contact. */
+    bool updateContact(std::size_t index, const Contact& newContact);
+    bool deleteContact(std::size_t index);
+    void clear();
+
+    /** Exact match search on name or phone; returns first matching index or std::nullopt. */
+    std::optional<std::size_t> searchContact(const std::string& keyword) const;
+
+    /** Case-insensitive substring search on name or phone; returns all matching indices. */
+    std::vector<std::size_t> searchContactsAdvanced(const std::string& keyword) const;
+
+    // SQLite persistence
+    bool saveToFile() const;
+    bool loadFromFile();
 };
 
 #endif
