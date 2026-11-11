@@ -4,19 +4,46 @@ stages:
 
 linux_x64:
   stage: build_and_test
+  # Uses your Docker runner on Linux/WSL2 (remove tags if using untagged shared runners)
+  tags:
+    - linux
   image: ubuntu:24.04
   variables:
     DEBIAN_FRONTEND: noninteractive
+    VCPKG_DEFAULT_BINARY_CACHE: "${CI_PROJECT_DIR}/.vcpkg-cache"
+  cache:
+    key: vcpkg-linux-x64
+    paths:
+      - .vcpkg/
+      - .vcpkg-cache/
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends build-essential cmake ninja-build qt6-base-dev libsqlite3-dev libboost-test-dev
+    - >
+      apt-get install -y --no-install-recommends
+      build-essential cmake ninja-build git curl zip unzip tar pkg-config python3
+      bison flex gperf ca-certificates
+      libx11-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev
+      libxcb1-dev libx11-xcb-dev libxcb-glx0-dev libxcb-keysyms1-dev
+      libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync-dev
+      libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxcb-render-util0-dev
+      libxcb-util-dev libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-dev
+      libxkbcommon-x11-dev libfontconfig1-dev libfreetype6-dev libgl1-mesa-dev libdbus-1-dev
   script:
-    - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-    - cmake --build build
-    - ctest --test-dir build --output-on-failure
-    - ./build/tests/ContactManagerTests --logger=JUNIT,message,build/test-results-linux.xml
-    - mkdir -p dist
-    - tar -czf dist/ContactManager-linux-x64.tar.gz -C bin ContactManager
+    - |
+      if [ -z "${VCPKG_ROOT:-}" ] || [ ! -x "${VCPKG_ROOT}/vcpkg" ]; then
+        export VCPKG_ROOT="${CI_PROJECT_DIR}/.vcpkg"
+        if [ ! -x "${VCPKG_ROOT}/vcpkg" ]; then
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+          "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
+        fi
+      fi
+      mkdir -p "${VCPKG_DEFAULT_BINARY_CACHE}"
+      cmake --preset vcpkg-linux
+      cmake --build --preset vcpkg-linux
+      ctest --preset vcpkg-linux
+      ./build/tests/ContactManagerTests --logger=JUNIT,message,build/test-results-linux.xml
+      mkdir -p dist
+      tar -czf dist/ContactManager-linux-x64.tar.gz -C bin ContactManager
   artifacts:
     when: always
     expire_in: 7 days
@@ -27,27 +54,30 @@ linux_x64:
 
 windows_x64:
   stage: build_and_test
-  # Uses GitLab SaaS Windows runner tag; replace with your self-hosted tag (e.g. [windows]) if needed
+  # Uses your Windows shell runner
   tags:
-    - saas-windows-medium-amd64
+    - windows
   variables:
-    VCPKG_TARGET_TRIPLET: x64-windows
+    VCPKG_DEFAULT_BINARY_CACHE: "${CI_PROJECT_DIR}\\.vcpkg-cache"
+  cache:
+    key: vcpkg-windows-x64
+    paths:
+      - .vcpkg/
+      - .vcpkg-cache/
   script:
     - |
       $ErrorActionPreference = "Stop"
-      $cmakeArgs = @("-S", ".", "-B", "build", "-DCMAKE_BUILD_TYPE=Release", "-DDEPLOY_QT_RUNTIME=ON")
-      if ($env:VCPKG_ROOT) {
-        if (Test-Path "$env:VCPKG_ROOT/vcpkg.exe") {
-          & "$env:VCPKG_ROOT/vcpkg.exe" install "sqlite3:$env:VCPKG_TARGET_TRIPLET" "boost-test:$env:VCPKG_TARGET_TRIPLET"
+      if (-not $env:VCPKG_ROOT -or -not (Test-Path "$env:VCPKG_ROOT/vcpkg.exe")) {
+        $env:VCPKG_ROOT = "$env:CI_PROJECT_DIR\.vcpkg"
+        if (-not (Test-Path "$env:VCPKG_ROOT/vcpkg.exe")) {
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
         }
-        $cmakeArgs += "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
       }
-      if ($env:QT_ROOT_DIR) {
-        $cmakeArgs += "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR"
-      }
-      cmake @cmakeArgs
-      cmake --build build --config Release
-      ctest --test-dir build -C Release --output-on-failure
+      New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+      cmake --preset vcpkg-windows
+      cmake --build --preset vcpkg-windows
+      ctest --preset vcpkg-windows
       $testExe = if (Test-Path "build/tests/Release/ContactManagerTests.exe") {
         "build/tests/Release/ContactManagerTests.exe"
       } else {
@@ -65,37 +95,15 @@ windows_x64:
     reports:
       junit: build/test-results-windows.xml
 
-macos:
-  stage: build_and_test
-  # Uses GitLab SaaS Apple Silicon runner tag (Premium/Ultimate) or self-hosted Mac runner tag
-  tags:
-    - saas-macos-medium-m1
-  before_script:
-    - brew list cmake qt boost >/dev/null 2>&1 || brew install cmake qt boost
-  script:
-    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDEPLOY_QT_RUNTIME=ON
-    - cmake --build build
-    - ctest --test-dir build --output-on-failure
-    - ./build/tests/ContactManagerTests --logger=JUNIT,message,build/test-results-macos.xml
-    - mkdir -p dist
-    - ditto -c -k --sequesterRsrc --keepParent bin/ContactManager.app dist/ContactManager-macos.zip
-  artifacts:
-    when: always
-    expire_in: 7 days
-    paths:
-      - dist/
-    reports:
-      junit: build/test-results-macos.xml
-
 release_app:
   stage: release
+  tags:
+    - linux
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   needs:
     - job: linux_x64
       artifacts: true
     - job: windows_x64
-      artifacts: true
-    - job: macos
       artifacts: true
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
@@ -112,12 +120,10 @@ release_app:
   release:
     tag_name: "$CI_COMMIT_TAG"
     name: "PhoneBook Manager $CI_COMMIT_TAG"
-    description: "Cross-platform release $CI_COMMIT_TAG (Linux x64, Windows x64, macOS)."
+    description: "Cross-platform release $CI_COMMIT_TAG (Linux x64, Windows x64)."
     assets:
       links:
         - name: "ContactManager-linux-x64.tar.gz"
           url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/contact-manager/${CI_COMMIT_TAG}/ContactManager-linux-x64.tar.gz"
         - name: "ContactManager-windows-x64.zip"
           url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/contact-manager/${CI_COMMIT_TAG}/ContactManager-windows-x64.zip"
-        - name: "ContactManager-macos.zip"
-          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/contact-manager/${CI_COMMIT_TAG}/ContactManager-macos.zip"

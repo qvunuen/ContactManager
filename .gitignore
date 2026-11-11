@@ -1,6 +1,9 @@
-# Trash from local CMake
+# Trash from local CMake & vcpkg
 build/
 bin/
+vcpkg_installed/
+.vcpkg/
+.vcpkg-cache/
 
 # Private SQLite data
 data/*.db
