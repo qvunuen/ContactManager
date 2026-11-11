@@ -16,9 +16,9 @@ std::string resolveDatabasePath() {
         QStringLiteral("../data")
     };
 
-    // Walk up from executable dir to handle bin/, bin/<Config>/, and macOS .app bundles
+    // Walk up from executable dir to handle bin/ (Linux/single-config) and bin/<Config>/ (MSVC)
     QDir probe(QCoreApplication::applicationDirPath());
-    for (int depth = 0; depth < 4; ++depth) {
+    for (int depth = 0; depth < 2; ++depth) {
         if (!probe.cdUp()) {
             break;
         }

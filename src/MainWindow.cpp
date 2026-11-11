@@ -95,10 +95,6 @@ void MainWindow::setupShortcuts() {
     auto* deleteShortcut = new QShortcut(QKeySequence::Delete, table);
     deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(deleteShortcut, &QShortcut::activated, this, &MainWindow::onDeleteContact);
-
-    auto* backspaceShortcut = new QShortcut(QKeySequence(Qt::Key_Backspace), table);
-    backspaceShortcut->setContext(Qt::WidgetWithChildrenShortcut);
-    connect(backspaceShortcut, &QShortcut::activated, this, &MainWindow::onDeleteContact);
 }
 
 void MainWindow::setDirty(bool dirty) {
